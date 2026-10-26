@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencatatan Beban & Manuver GITET 500 kV Gandul</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        plnBlue: '#1e3a8a',
+                        plnSky: '#0284c7',
+                        plnYellow: '#eab308',
+                        plnDark: '#0f172a'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- HEADER PLN -->
+    <header class="bg-plnBlue text-white shadow-lg sticky top-0 z-40 border-b-4 border-plnYellow no-print">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-plnYellow text-plnDark p-3 rounded-xl font-bold flex items-center justify-center shadow">
+                    <i class="fa-solid fa-bolt text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold bg-yellow-400 text-blue-950 px-2 py-0.5 rounded uppercase">PT PLN (Persero)</span>
+                        <span class="text-[10px] text-blue-200 font-medium">GITET 500 kV GANDUL</span>
+                    </div>
+                    <h1 class="text-lg sm:text-xl font-black tracking-tight">Sistem Operasi & Pemeliharaan</h1>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex flex-wrap gap-1 bg-blue-950/80 p-1.5 rounded-xl border border-blue-800">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-plnYellow text-plnDark shadow transition flex items-center gap-1.5"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+                <button onclick="switchTab('input')" id="nav-input" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition flex items-center gap-1.5"><i class="fa-solid fa-pen-to-square"></i> Input Beban</button>
+                <button onclick="switchTab('jam10')" id="nav-jam10" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition">Jam 10.00</button>
+                <button onclick="switchTab('jam14')" id="nav-jam14" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition">Jam 14.00</button>
+                <button onclick="switchTab('jam19')" id="nav-jam19" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition">Jam 19.00</button>
+                <button onclick="switchTab('manuver')" id="nav-manuver" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition flex items-center gap-1.5"><i class="fa-solid fa-shuffle"></i> Menu Manuver</button>
+                <button onclick="switchTab('riwayat-manuver')" id="nav-riwayat-manuver" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> Riwayat Manuver</button>
+                <button onclick="switchTab('trend')" id="nav-trend" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition flex items-center gap-1.5"><i class="fa-solid fa-chart-line"></i> Trend Bulanan</button>
+                <button onclick="switchTab('settings')" id="nav-settings" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:bg-blue-800 transition flex items-center gap-1.5"><i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
+        <i class="fa-solid fa-circle-check text-plnYellow text-xl"></i>
+        <div>
+            <h4 class="font-bold text-sm">Informasi Sistem</h4>
+            <p id="toast-msg" class="text-xs text-slate-300"></p>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full space-y-6">
+
+        <!-- DASHBOARD TAB -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            <div class="bg-gradient-to-r from-plnBlue via-blue-800 to-indigo-900 p-6 sm:p-8 rounded-3xl text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 border-l-8 border-plnYellow">
+                <div class="space-y-2">
+                    <span class="bg-blue-950 text-plnYellow text-xs font-bold px-3 py-1 rounded-full border border-blue-700">GITET 500 kV GANDUL</span>
+                    <h2 class="text-2xl sm:text-3xl font-black">Dashboard Pemantauan & Operasi</h2>
+                    <p class="text-blue-100 text-xs sm:text-sm max-w-xl">Pusat kendali pencatatan beban puncak harian, log manuver switching PMS/PMT, dan evaluasi trend gardu induk.</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="switchTab('input')" class="px-5 py-3 bg-plnYellow text-plnDark hover:bg-yellow-400 font-bold rounded-2xl text-xs sm:text-sm shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-plus-circle"></i> Input Beban Baru
+                    </button>
+                    <button onclick="switchTab('manuver')" class="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl text-xs sm:text-sm border border-white/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-shuffle"></i> Catat Manuver
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase">Total Log Beban</p>
+                        <h3 id="stat-total-records" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                    </div>
+                    <div class="bg-blue-50 text-plnBlue p-4 rounded-2xl"><i class="fa-solid fa-database text-xl"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase">Log Manuver Tersimpan</p>
+                        <h3 id="stat-manuver-records" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                    </div>
+                    <div class="bg-amber-50 text-amber-600 p-4 rounded-2xl"><i class="fa-solid fa-shuffle text-xl"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase">Data Bulan Ini</p>
+                        <h3 id="stat-month-records" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                    </div>
+                    <div class="bg-sky-50 text-plnSky p-4 rounded-2xl"><i class="fa-solid fa-calendar-days text-xl"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase">Status Sistem</p>
+                        <h3 class="text-lg font-black text-emerald-600 mt-1">Normal / Online</h3>
+                    </div>
+                    <div class="bg-emerald-50 text-emerald-600 p-4 rounded-2xl"><i class="fa-solid fa-circle-check text-xl"></i></div>
+                </div>
+            </div>
+
+            <!-- Recent Log & Mini Trend -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-base text-slate-900 mb-4 flex items-center"><i class="fa-solid fa-clock-rotate-left mr-2 text-plnBlue"></i> Pencatatan Beban Puncak Terakhir</h3>
+                    <div id="dashboard-recent-list" class="space-y-3">
+                        <p class="text-xs text-slate-400 text-center py-6">Belum ada data pencatatan beban.</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900 mb-2 flex items-center"><i class="fa-solid fa-bolt mr-2 text-plnYellow"></i> Pintasan Operasi</h3>
+                        <p class="text-xs text-slate-500 mb-6">Navigasi cepat menuju pengisian log harian atau rekapitulasi laporan gardu induk.</p>
+                    </div>
+                    <div class="space-y-3">
+                        <button onclick="switchTab('jam10')" class="w-full bg-slate-50 hover:bg-slate-100 border text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-between">
+                            <span>Riwayat Jam 10.00 WIB</span> <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                        <button onclick="switchTab('riwayat-manuver')" class="w-full bg-slate-50 hover:bg-slate-100 border text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-between">
+                            <span>Riwayat Laporan Manuver</span> <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INPUT BEBAN TAB -->
+        <section id="tab-input" class="tab-content hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-plnBlue text-white px-6 py-4 flex justify-between items-center border-b-4 border-plnYellow">
+                    <div>
+                        <h3 class="font-bold text-base"><i class="fa-solid fa-pen-to-square mr-2 text-plnYellow"></i> FORMULIR PENCATATAN BEBAN PUNCAK</h3>
+                        <p class="text-xs text-blue-200">GITET 500 kV GANDUL — Masukkan Ampere, MW, MVar, dan Tegangan secara lengkap (Hingga IBT 4).</p>
+                    </div>
+                    <button onclick="resetLoadForm()" class="text-xs bg-blue-950 text-white px-3 py-1.5 rounded-lg hover:bg-blue-900"><i class="fa-solid fa-rotate-right mr-1"></i> Reset</button>
+                </div>
+
+                <form id="loadForm" onsubmit="handleLoadSubmit(event)" class="p-6 space-y-6">
+                    <input type="hidden" id="edit-load-index" value="">
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Tanggal *</label>
+                            <input type="date" id="input-date" required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Jam Pencatatan *</label>
+                            <select id="input-hour" required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                                <option value="10.00">Jam 10.00 WIB</option>
+                                <option value="14.00">Jam 14.00 WIB</option>
+                                <option value="19.00">Jam 19.00 WIB</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Petugas Jargi 1 *</label>
+                            <input type="text" id="input-jargi1" placeholder="Nama Jargi 1" required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Petugas Jargi 2 *</label>
+                            <input type="text" id="input-jargi2" placeholder="Nama Jargi 2" required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                        </div>
+                    </div>
+
+                    <!-- Bay Inputs (Up to IBT 4) -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-sm text-slate-800 uppercase"><i class="fa-solid fa-tower-broadcast mr-1 text-plnBlue"></i> Pembebanan Bay & IBT (Hingga IBT 4)</h4>
+                            <span class="text-xs text-slate-400 italic">Persentase (%) otomatis & dilewati dengan tombol Tab (`tabindex="-1"`)</span>
+                        </div>
+                        <div id="bay-inputs-container" class="space-y-3 max-h-96 overflow-y-auto pr-2 border rounded-xl p-3 bg-slate-50">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Voltage Inputs -->
+                    <div class="bg-slate-50 p-4 rounded-xl border">
+                        <h4 class="font-bold text-sm text-slate-800 uppercase mb-3"><i class="fa-solid fa-bolt-lightning mr-1 text-plnBlue"></i> Data Tegangan Sistem (kV)</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Busbar A *</label>
+                                <input type="number" step="0.1" id="volt-busA" required placeholder="kV" class="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Busbar B *</label>
+                                <input type="number" step="0.1" id="volt-busB" required placeholder="kV" class="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Teg IBT 1 *</label>
+                                <input type="number" step="0.1" id="volt-ibt1" required placeholder="kV" class="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Teg IBT 2 *</label>
+                                <input type="number" step="0.1" id="volt-ibt2" required placeholder="kV" class="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Teg IBT 3 *</label>
+                                <input type="number" step="0.1" id="volt-ibt3" required placeholder="kV" class="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Teg IBT 4 *</label>
+                                <input type="number" step="0.1" id="volt-ibt4" required placeholder="kV" class="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button type="submit" class="bg-plnBlue hover:bg-blue-900 text-white font-bold px-8 py-3 rounded-xl shadow transition text-sm flex items-center">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Data Beban
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- JAM 10, 14, 19 TABS -->
+        <section id="tab-jam10" class="tab-content hidden space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow border">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h2 class="text-xl font-black text-plnBlue"><i class="fa-solid fa-clock mr-2"></i> Riwayat Pencatatan Beban Jam 10.00 WIB</h2>
+                    <input type="text" id="search-jam10" onkeyup="renderHistory('10.00')" placeholder="Cari tanggal / petugas..." class="border rounded-xl px-3 py-2 text-xs w-64 outline-none focus:ring-2 focus:ring-plnBlue">
+                </div>
+                <div id="container-jam10" class="space-y-4"></div>
+            </div>
+        </section>
+
+        <section id="tab-jam14" class="tab-content hidden space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow border">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h2 class="text-xl font-black text-plnBlue"><i class="fa-solid fa-clock mr-2"></i> Riwayat Pencatatan Beban Jam 14.00 WIB</h2>
+                    <input type="text" id="search-jam14" onkeyup="renderHistory('14.00')" placeholder="Cari tanggal / petugas..." class="border rounded-xl px-3 py-2 text-xs w-64 outline-none focus:ring-2 focus:ring-plnBlue">
+                </div>
+                <div id="container-jam14" class="space-y-4"></div>
+            </div>
+        </section>
+
+        <section id="tab-jam19" class="tab-content hidden space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow border">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h2 class="text-xl font-black text-plnBlue"><i class="fa-solid fa-clock mr-2"></i> Riwayat Pencatatan Beban Jam 19.00 WIB</h2>
+                    <input type="text" id="search-jam19" onkeyup="renderHistory('19.00')" placeholder="Cari tanggal / petugas..." class="border rounded-xl px-3 py-2 text-xs w-64 outline-none focus:ring-2 focus:ring-plnBlue">
+                </div>
+                <div id="container-jam19" class="space-y-4"></div>
+            </div>
+        </section>
+
+        <!-- MENU MANUVER TAB -->
+        <section id="tab-manuver" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="border-b pb-4 mb-6">
+                    <h2 class="text-xl font-black text-plnBlue"><i class="fa-solid fa-shuffle mr-2"></i> FORMULIR PENCATATAN MANUVER GITET GANDUL</h2>
+                    <p class="text-xs text-slate-500">Lembar Berita Acara & Log Pensaklaran Peralatan PMS / PMT.</p>
+                </div>
+
+                <form id="manuverForm" onsubmit="handleManuverSubmit(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Hari & Tanggal *</label>
+                            <input type="date" id="man-date" required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Pilih Bay Terkait *</label>
+                            <select id="man-bay" required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Keterangan Kegiatan / D/R *</label>
+                            <input type="text" id="man-desc" placeholder="Contoh: Maneuver Penormalan Tegangan Bay Lengkong #2..." required class="w-full border rounded-xl p-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-plnBlue">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Pengawas Manuver (PM)</label>
+                            <input type="text" id="man-pm" placeholder="Nama PM" required class="w-full border rounded-xl p-2 text-sm bg-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Pengawas Pekerjaan</label>
+                            <input type="text" id="man-work" placeholder="Nama Pengawas Pekerjaan" required class="w-full border rounded-xl p-2 text-sm bg-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Pengawas K3</label>
+                            <input type="text" id="man-k3" placeholder="Nama Pengawas K3" required class="w-full border rounded-xl p-2 text-sm bg-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Pelaksana Manuver</label>
+                            <input type="text" id="man-operator" placeholder="Nama Pelaksana" required class="w-full border rounded-xl p-2 text-sm bg-white outline-none">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Dispatcher (Dispa)</label>
+                            <input type="text" id="man-dispa" placeholder="Nama Dispatcher" required class="w-full border rounded-xl p-2 text-sm bg-white outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Steps Table -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-sm text-slate-700 uppercase"><i class="fa-solid fa-list-ol mr-1 text-plnBlue"></i> Urutan Langkah Manuver (PMS / PMT)</h3>
+                            <button type="button" onclick="addManuverRow()" class="bg-plnSky hover:bg-sky-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow"><i class="fa-solid fa-plus mr-1"></i> Tambah Baris Langkah</button>
+                        </div>
+                        <div class="overflow-x-auto border rounded-xl">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead class="bg-blue-900 text-white">
+                                    <tr>
+                                        <th class="p-3 w-24">Jam</th>
+                                        <th class="p-3">Nama Peralatan (PMS/PMT)</th>
+                                        <th class="p-3 w-36">Status</th>
+                                        <th class="p-3 w-36">Mode Kontrol</th>
+                                        <th class="p-3 w-16 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manuver-steps-tbody" class="divide-y divide-slate-200">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-plnBlue hover:bg-blue-900 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition text-sm flex items-center">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Catatan Manuver
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- RIWAYAT MANUVER TAB -->
+        <section id="tab-riwayat-manuver" class="tab-content hidden space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow border">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h2 class="text-xl font-black text-plnBlue"><i class="fa-solid fa-list-check mr-2"></i> Riwayat & Laporan Manuver GITET Gandul</h2>
+                    <input type="text" id="search-manuver" onkeyup="renderManuverHistory()" placeholder="Cari kegiatan / tanggal..." class="border rounded-xl px-3 py-2 text-xs w-64 outline-none focus:ring-2 focus:ring-plnBlue">
+                </div>
+                <div id="manuver-history-list" class="space-y-4"></div>
+            </div>
+        </section>
+
+        <!-- TREND BULANAN TAB -->
+        <section id="tab-trend" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div>
+                        <h2 class="text-xl font-black text-plnBlue"><i class="fa-solid fa-chart-line mr-2"></i> Analisis Trend Bulanan Per Bay</h2>
+                        <p class="text-xs text-slate-500">Evaluasi grafik pertumbuhan pembebanan Ampere & MW.</p>
+                    </div>
+                    <div>
+                        <select id="trend-bay-select" onchange="renderTrendChart()" class="border rounded-xl p-2.5 text-xs bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-plnBlue">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border h-96 relative">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SETTINGS TAB -->
+        <section id="tab-settings" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-2xl mx-auto space-y-6">
+                <div>
+                    <h2 class="text-xl font-black text-plnBlue mb-1"><i class="fa-solid fa-cloud-arrow-up mr-2"></i> Sinkronisasi Google Drive / Sheets</h2>
+                    <p class="text-xs text-slate-500">Hubungkan aplikasi dengan Google Apps Script kantor untuk pencatatan otomatis.</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">URL Web App Google Apps Script</label>
+                        <input type="text" id="setting-gscript-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-plnBlue font-mono">
+                    </div>
+                    <button onclick="saveSettings()" class="bg-plnBlue hover:bg-blue-900 text-white font-bold px-6 py-3 rounded-xl shadow transition text-sm">
+                        Simpan Pengaturan Sinkronisasi
+                    </button>
+                </div>
+                <div class="border-t pt-4">
+                    <h4 class="font-bold text-xs text-slate-700 uppercase mb-2">Contoh Skrip Google Apps Script:</h4>
+                    <pre class="bg-slate-900 text-slate-200 p-3 rounded-xl text-[10px] font-mono overflow-x-auto"><code>function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  sheet.appendRow([data.date, data.hour, data.officer]);
+  return ContentService.createTextOutput("SUCCESS").setMimeType(ContentService.MimeType.TEXT);
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-plnDark text-white py-6 mt-12 border-t-4 border-plnYellow text-center text-xs no-print">
+        <p class="font-bold">© 2026 GITET 500 kV GANDUL — PT PLN (Persero)</p>
+        <p class="text-slate-400 mt-1">Sistem Pencatatan Beban Puncak & Log Manuver Operasional</p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const bayConfigs = [
+            { name: 'Bay Lengkong 1', maxA: 5704 },
+            { name: 'Bay Lengkong 2', maxA: 5704 },
+            { name: 'Bay Depok 1', maxA: 2876 },
+            { name: 'Bay Depok 2', maxA: 2876 },
+            { name: 'Bay Kembangan', maxA: 3224 },
+            { name: 'Bay Durikosambi', maxA: 3224 },
+            { name: 'Bay IBT 1', maxA: 1718 },
+            { name: 'Bay IBT 2', maxA: 1718 },
+            { name: 'Bay IBT 3', maxA: 1718 },
+            { name: 'Bay IBT 4', maxA: 1718 }
+        ];
+
+        let records = JSON.parse(localStorage.getItem('gandul_records') || '[]');
+        let manuverRecords = JSON.parse(localStorage.getItem('gandul_manuver') || '[]');
+        let trendChartInstance = null;
+
+        // GLOBAL SCOPE FUNCTIONS
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-plnYellow', 'text-plnDark', 'shadow');
+                btn.classList.add('text-white', 'hover:bg-blue-800');
+            });
+            
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if(targetTab) targetTab.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-white', 'hover:bg-blue-800');
+                activeBtn.classList.add('bg-plnYellow', 'text-plnDark', 'shadow');
+            }
+
+            if(tabId === 'trend') renderTrendChart();
+            if(tabId === 'riwayat-manuver') renderManuverHistory();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('input-date').valueAsDate = new Date();
+            document.getElementById('man-date').valueAsDate = new Date();
+            document.getElementById('setting-gscript-url').value = localStorage.getItem('gandul_gscript_url') || '';
+            
+            buildBayInputs();
+            buildBayDropdowns();
+            buildTrendBaySelect();
+            renderDashboard();
+            renderHistory('10.00');
+            renderHistory('14.00');
+            renderHistory('19.00');
+            renderManuverHistory();
+            addManuverRow();
+        });
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3500);
+        }
+
+        function buildBayInputs(values = {}) {
+            const container = document.getElementById('bay-inputs-container');
+            container.innerHTML = '';
+            bayConfigs.forEach((bay, index) => {
+                const val = values[bay.name] || { ampere: '', mw: '', mvar: '', percent: '0.00%' };
+                container.innerHTML += `
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-white p-3 rounded-xl border">
+                        <div class="sm:col-span-4 font-bold text-slate-700 text-xs">
+                            ${bay.name} <span class="text-[10px] text-slate-400 font-normal">(${bay.maxA} A)</span>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <input type="number" step="0.1" id="bay-${index}-amp" oninput="calcPct(${index}, ${bay.maxA})" value="${val.ampere}" required placeholder="Ampere" class="w-full border rounded p-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-plnBlue">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <input type="number" step="0.1" id="bay-${index}-mw" value="${val.mw}" required placeholder="MW" class="w-full border rounded p-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-plnBlue">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <input type="number" step="0.1" id="bay-${index}-mvar" value="${val.mvar}" required placeholder="MVar" class="w-full border rounded p-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-plnBlue">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <input type="text" id="bay-${index}-pct" readonly tabindex="-1" value="${val.percent}" class="w-full bg-slate-100 border rounded p-1.5 text-xs font-bold text-plnBlue outline-none cursor-not-allowed">
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function calcPct(index, maxA) {
+            const amp = parseFloat(document.getElementById(`bay-${index}-amp`).value) || 0;
+            const pct = maxA > 0 ? ((amp / maxA) * 100).toFixed(2) : 0;
+            document.getElementById(`bay-${index}-pct`).value = pct + '%';
+        }
+
+        function buildBayDropdowns() {
+            const select = document.getElementById('man-bay');
+            if(!select) return;
+            select.innerHTML = '';
+            bayConfigs.forEach(b => {
+                select.innerHTML += `<option value="${b.name}">${b.name}</option>`;
+            });
+        }
+
+        function buildTrendBaySelect() {
+            const select = document.getElementById('trend-bay-select');
+            if(!select) return;
+            select.innerHTML = '';
+            bayConfigs.forEach(b => {
+                select.innerHTML += `<option value="${b.name}">${b.name}</option>`;
+            });
+        }
+
+        function resetLoadForm() {
+            document.getElementById('loadForm').reset();
+            document.getElementById('edit-load-index').value = '';
+            document.getElementById('input-date').valueAsDate = new Date();
+            buildBayInputs();
+        }
+
+        function handleLoadSubmit(event) {
+            event.preventDefault();
+            const editIndex = document.getElementById('edit-load-index').value;
+            const date = document.getElementById('input-date').value;
+            const hour = document.getElementById('input-hour').value;
+            const jargi1 = document.getElementById('input-jargi1').value;
+            const jargi2 = document.getElementById('input-jargi2').value;
+
+            let baysData = {};
+            for(let i=0; i<bayConfigs.length; i++) {
+                const amp = document.getElementById(`bay-${i}-amp`).value;
+                const mw = document.getElementById(`bay-${i}-mw`).value;
+                const mvar = document.getElementById(`bay-${i}-mvar`).value;
+                const pct = document.getElementById(`bay-${i}-pct`).value;
+
+                if(amp === '' || mw === '' || mvar === '') {
+                    showToast(`Data ${bayConfigs[i].name} belum lengkap!`);
+                    return;
+                }
+
+                baysData[bayConfigs[i].name] = {
+                    ampere: parseFloat(amp),
+                    mw: parseFloat(mw),
+                    mvar: parseFloat(mvar),
+                    percent: pct
+                };
+            }
+
+            const busA = document.getElementById('volt-busA').value;
+            const busB = document.getElementById('volt-busB').value;
+            const ibt1 = document.getElementById('volt-ibt1').value;
+            const ibt2 = document.getElementById('volt-ibt2').value;
+            const ibt3 = document.getElementById('volt-ibt3').value;
+            const ibt4 = document.getElementById('volt-ibt4').value;
+
+            if(!busA || !busB || !ibt1 || !ibt2 || !ibt3 || !ibt4) {
+                showToast("Semua data tegangan wajib diisi!");
+                return;
+            }
+
+            const payload = {
+                id: editIndex !== '' ? records[editIndex].id : Date.now(),
+                date, hour, jargi1, jargi2,
+                bays: baysData,
+                voltage: { busA: parseFloat(busA), busB: parseFloat(busB), ibt1: parseFloat(ibt1), ibt2: parseFloat(ibt2), ibt3: parseFloat(ibt3), ibt4: parseFloat(ibt4) }
+            };
+
+            if(editIndex !== '') {
+                records[editIndex] = payload;
+                showToast("Data beban berhasil diperbarui!");
+                resetLoadForm();
+            } else {
+                records.unshift(payload);
+                showToast("Data beban berhasil disimpan!");
+                document.getElementById('loadForm').reset();
+                document.getElementById('input-date').valueAsDate = new Date();
+                buildBayInputs();
+            }
+
+            localStorage.setItem('gandul_records', JSON.stringify(records));
+
+            const gscriptUrl = localStorage.getItem('gandul_gscript_url');
+            if(gscriptUrl) {
+                fetch(gscriptUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(err => console.log(err));
+            }
+
+            renderDashboard();
+            renderHistory('10.00');
+            renderHistory('14.00');
+            renderHistory('19.00');
+            
+            const tabHourMap = { '10.00': 'jam10', '14.00': 'jam14', '19.00': 'jam19' };
+            switchTab(tabHourMap[hour] || 'jam10');
+        }
+
+        // RENDER EXCEL MATRIX STYLE HISTORY TABLES
+        function renderHistory(hourFilter) {
+            const containerId = hourFilter === '10.00' ? 'container-jam10' : (hourFilter === '14.00' ? 'container-jam14' : 'container-jam19');
+            const searchId = hourFilter === '10.00' ? 'search-jam10' : (hourFilter === '14.00' ? 'search-jam14' : 'search-jam19');
+            
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const query = (document.getElementById(searchId)?.value || '').toLowerCase();
+            const filtered = records.filter(r => r.hour === hourFilter && (r.date.toLowerCase().includes(query) || (r.jargi1 + ' ' + r.jargi2).toLowerCase().includes(query)));
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada data pencatatan untuk jam ${hourFilter}.</p>`;
+                return;
+            }
+
+            let tableHtml = `
+                <div class="overflow-x-auto border rounded-xl shadow-sm bg-white">
+                    <table class="w-full text-center border-collapse text-[11px] whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-blue-950 text-white font-bold border-b">
+                                <th rowspan="2" class="p-2 border-r border-blue-800">TANGGAL</th>
+                                <th rowspan="2" class="p-2 border-r border-blue-800">JAM</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">LENGKONG 1</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">LENGKONG 2</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">DEPOK 1</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">DEPOK 2</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">KEMBANGAN</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">DURIKOSAMBI</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">IBT 1</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">IBT 2</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">IBT 3</th>
+                                <th colspan="3" class="p-2 border-r border-blue-800 bg-blue-900">IBT 4</th>
+                                <th rowspan="2" class="p-2 border-r border-blue-800 bg-blue-900">BUS A</th>
+                                <th rowspan="2" class="p-2 border-r border-blue-800 bg-blue-900">BUS B</th>
+                                <th colspan="4" class="p-2 border-r border-blue-800 bg-blue-900">TEGANGAN IBT (kV)</th>
+                                <th rowspan="2" class="p-2 border-r border-blue-800 bg-blue-900">JARGI 1</th>
+                                <th rowspan="2" class="p-2 border-r border-blue-800 bg-blue-900">JARGI 2</th>
+                                <th rowspan="2" class="p-2 bg-slate-800">AKSI</th>
+                            </tr>
+                            <tr class="bg-blue-900 text-white font-semibold text-[10px] border-b">
+                                <!-- Lengkong 1 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- Lengkong 2 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- Depok 1 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- Depok 2 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- Kembangan -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- Durikosambi -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- IBT 1 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- IBT 2 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- IBT 3 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- IBT 4 -->
+                                <th class="p-1.5 border-r border-blue-800">AMPER</th><th class="p-1.5 border-r border-blue-800">MW</th><th class="p-1.5 border-r border-blue-800">MVAR</th>
+                                <!-- Tegangan IBT -->
+                                <th class="p-1.5 border-r border-blue-800">IBT 1</th><th class="p-1.5 border-r border-blue-800">IBT 2</th><th class="p-1.5 border-r border-blue-800">IBT 3</th><th class="p-1.5 border-r border-blue-800">IBT 4</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+            `;
+
+            filtered.forEach((rec, idx) => {
+                const b = rec.bays;
+                const v = rec.voltage;
+                tableHtml += `
+                    <tr class="hover:bg-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
+                        <td class="p-2 border-r font-medium">${rec.date}</td>
+                        <td class="p-2 border-r font-mono">${rec.hour}</td>
+                        
+                        <!-- Bay Lengkong 1 -->
+                        <td class="p-2 border-r">${b['Bay Lengkong 1']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Lengkong 1']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Lengkong 1']?.mvar || 0}</td>
+                        
+                        <!-- Bay Lengkong 2 -->
+                        <td class="p-2 border-r">${b['Bay Lengkong 2']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Lengkong 2']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Lengkong 2']?.mvar || 0}</td>
+
+                        <!-- Bay Depok 1 -->
+                        <td class="p-2 border-r">${b['Bay Depok 1']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Depok 1']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Depok 1']?.mvar || 0}</td>
+
+                        <!-- Bay Depok 2 -->
+                        <td class="p-2 border-r">${b['Bay Depok 2']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Depok 2']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Depok 2']?.mvar || 0}</td>
+
+                        <!-- Bay Kembangan -->
+                        <td class="p-2 border-r">${b['Bay Kembangan']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Kembangan']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Kembangan']?.mvar || 0}</td>
+
+                        <!-- Bay Durikosambi -->
+                        <td class="p-2 border-r">${b['Bay Durikosambi']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Durikosambi']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay Durikosambi']?.mvar || 0}</td>
+
+                        <!-- Bay IBT 1 -->
+                        <td class="p-2 border-r">${b['Bay IBT 1']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 1']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 1']?.mvar || 0}</td>
+
+                        <!-- Bay IBT 2 -->
+                        <td class="p-2 border-r">${b['Bay IBT 2']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 2']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 2']?.mvar || 0}</td>
+
+                        <!-- Bay IBT 3 -->
+                        <td class="p-2 border-r">${b['Bay IBT 3']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 3']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 3']?.mvar || 0}</td>
+
+                        <!-- Bay IBT 4 -->
+                        <td class="p-2 border-r">${b['Bay IBT 4']?.ampere || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 4']?.mw || 0}</td>
+                        <td class="p-2 border-r">${b['Bay IBT 4']?.mvar || 0}</td>
+
+                        <!-- Busbars -->
+                        <td class="p-2 border-r font-semibold">${v.busA}</td>
+                        <td class="p-2 border-r font-semibold">${v.busB}</td>
+
+                        <!-- Tegangan IBT -->
+                        <td class="p-2 border-r">${v.ibt1}</td>
+                        <td class="p-2 border-r">${v.ibt2}</td>
+                        <td class="p-2 border-r">${v.ibt3}</td>
+                        <td class="p-2 border-r">${v.ibt4}</td>
+
+                        <td class="p-2 border-r font-semibold text-slate-700">${rec.jargi1}</td>
+                        <td class="p-2 border-r font-semibold text-slate-700">${rec.jargi2}</td>
+                        <td class="p-2 flex justify-center gap-1.5">
+                            <button onclick="printLoadPDF(${rec.id})" title="Cetak PDF" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[10px] shadow"><i class="fa-solid fa-file-pdf"></i></button>
+                            <button onclick="editLoadRecord(${records.indexOf(rec)})" title="Edit" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-[10px] shadow"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteLoadRecord(${records.indexOf(rec)})" title="Hapus" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] shadow"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = tableHtml;
+        }
+
+        function printLoadPDF(id) {
+            const rec = records.find(r => r.id === id);
+            if(!rec) return;
+
+            let bayRowsHtml = '';
+            for(let bayName in rec.bays) {
+                const b = rec.bays[bayName];
+                bayRowsHtml += `<tr><td style="border:1px solid #cbd5e1; padding:8px;">${bayName}</td><td style="border:1px solid #cbd5e1; padding:8px; text-align:right;">${b.ampere} A</td><td style="border:1px solid #cbd5e1; padding:8px; text-align:right;">${b.mw} MW</td><td style="border:1px solid #cbd5e1; padding:8px; text-align:right;">${b.mvar} MVar</td><td style="border:1px solid #cbd5e1; padding:8px; text-align:right; font-weight:bold; color:#1e3a8a;">${b.percent}</td></tr>`;
+            }
+
+            const win = window.open('', '_blank');
+            win.document.write(`
+                <html>
+                <head><title>Laporan Pembebanan GITET Gandul - ${rec.date}</title>
+                <style>
+                    body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #0f172a; margin: 0; }
+                    .header { border-bottom: 3px solid #eab308; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+                    .company { font-size: 11px; font-weight: bold; background: #eab308; color: #1e3a8a; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 5px; }
+                    h2 { margin: 0; color: #1e3a8a; font-size: 20px; text-transform: uppercase; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+                    th { background: #1e3a8a; color: white; padding: 10px 8px; border: 1px solid #1e3a8a; text-align: left; }
+                    .volt-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 15px; background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 11px; text-align: center; }
+                    .volt-item { background: white; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+                    .footer { margin-top: 50px; display: flex; justify-content: space-between; text-align: center; font-size: 12px; }
+                </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div>
+                            <span class="company">PT PLN (PERSERO)</span>
+                            <h2>GITET 500 kV GANDUL</h2>
+                            <p style="margin:2px 0 0 0; font-size:12px; color:#64748b;">Laporan Pembebanan Puncak Jam ${rec.hour} WIB</p>
+                        </div>
+                        <div style="text-align:right; font-size:12px;">
+                            <strong>Tanggal:</strong> ${rec.date}<br>
+                            <strong>Petugas Jargi:</strong> ${rec.jargi1} & ${rec.jargi2}
+                        </div>
+                    </div>
+
+                    <h4 style="margin:10px 0 5px 0; font-size:13px; color:#1e3a8a; text-transform:uppercase;">1. Tabel Pembebanan Bay & IBT</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Peralatan</th>
+                                <th style="text-align:right;">Ampere</th>
+                                <th style="text-align:right;">MW</th>
+                                <th style="text-align:right;">MVar</th>
+                                <th style="text-align:right;">Beban (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${bayRowsHtml}
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin:20px 0 5px 0; font-size:13px; color:#1e3a8a; text-transform:uppercase;">2. Data Tegangan Sistem (kV)</h4>
+                    <div class="volt-grid">
+                        <div class="volt-item"><strong>Busbar A</strong><br>${rec.voltage.busA} kV</div>
+                        <div class="volt-item"><strong>Busbar B</strong><br>${rec.voltage.busB} kV</div>
+                        <div class="volt-item"><strong>IBT 1</strong><br>${rec.voltage.ibt1} kV</div>
+                        <div class="volt-item"><strong>IBT 2</strong><br>${rec.voltage.ibt2} kV</div>
+                        <div class="volt-item"><strong>IBT 3</strong><br>${rec.voltage.ibt3} kV</div>
+                        <div class="volt-item"><strong>IBT 4</strong><br>${rec.voltage.ibt4} kV</div>
+                    </div>
+
+                    <div class="footer">
+                        <div>
+                            <p>Petugas Jargi</p>
+                            <br><br><br>
+                            <p><b>( ${rec.jargi1} & ${rec.jargi2} )</b></p>
+                        </div>
+                        <div>
+                            <p>Supervisor Operasi GITET Gandul</p>
+                            <br><br><br>
+                            <p><b>( _______________________ )</b></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            win.document.close();
+            win.print();
+        }
+
+        function editLoadRecord(index) {
+            const rec = records[index];
+            switchTab('input');
+            document.getElementById('edit-load-index').value = index;
+            document.getElementById('input-date').value = rec.date;
+            document.getElementById('input-hour').value = rec.hour;
+            document.getElementById('input-jargi1').value = rec.jargi1 || '';
+            document.getElementById('input-jargi2').value = rec.jargi2 || '';
+            
+            buildBayInputs(rec.bays);
+            
+            document.getElementById('volt-busA').value = rec.voltage.busA;
+            document.getElementById('volt-busB').value = rec.voltage.busB;
+            document.getElementById('volt-ibt1').value = rec.voltage.ibt1;
+            document.getElementById('volt-ibt2').value = rec.voltage.ibt2;
+            document.getElementById('volt-ibt3').value = rec.voltage.ibt3;
+            document.getElementById('volt-ibt4').value = rec.voltage.ibt4;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteLoadRecord(index) {
+            if(confirm("Hapus data pencatatan beban ini?")) {
+                records.splice(index, 1);
+                localStorage.setItem('gandul_records', JSON.stringify(records));
+                renderDashboard();
+                renderHistory('10.00');
+                renderHistory('14.00');
+                renderHistory('19.00');
+                showToast("Data berhasil dihapus.");
+            }
+        }
+
+        // MANUVER LOGIC
+        function addManuverRow(time = '', equip = '', status = 'Close //', ctrl = '(RCP)') {
+            const tbody = document.getElementById('manuver-steps-tbody');
+            if(!tbody) return;
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 manuver-row';
+            tr.innerHTML = `
+                <td class="p-2"><input type="text" placeholder="14.29" value="${time}" class="m-time w-full border rounded p-1.5 outline-none font-mono text-center"></td>
+                <td class="p-2"><input type="text" placeholder="PMS Line Lengkong 2" value="${equip}" class="m-equip w-full border rounded p-1.5 outline-none font-medium"></td>
+                <td class="p-2">
+                    <select class="m-status w-full border rounded p-1.5 outline-none font-bold">
+                        <option value="Close //" ${status === 'Close //' ? 'selected' : ''}>Close //</option>
+                        <option value="Open #" ${status === 'Open #' ? 'selected' : ''}>Open #</option>
+                    </select>
+                </td>
+                <td class="p-2">
+                    <select class="m-ctrl w-full border rounded p-1.5 outline-none font-bold">
+                        <option value="(RCP)" ${ctrl === '(RCP)' ? 'selected' : ''}>(RCP)</option>
+                        <option value="(RCC)" ${ctrl === '(RCC)' ? 'selected' : ''}>(RCC)</option>
+                        <option value="(LOCAL)" ${ctrl === '(LOCAL)' ? 'selected' : ''}>(LOCAL)</option>
+                    </select>
+                </td>
+                <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function handleManuverSubmit(e) {
+            e.preventDefault();
+            const date = document.getElementById('man-date').value;
+            const bay = document.getElementById('man-bay').value;
+            const desc = document.getElementById('man-desc').value;
+            const pm = document.getElementById('man-pm').value;
+            const work = document.getElementById('man-work').value;
+            const k3 = document.getElementById('man-k3').value;
+            const operator = document.getElementById('man-operator').value;
+            const dispa = document.getElementById('man-dispa').value;
+
+            const rows = document.querySelectorAll('.manuver-row');
+            let steps = [];
+            rows.forEach(r => {
+                steps.push({
+                    time: r.querySelector('.m-time').value,
+                    equip: r.querySelector('.m-equip').value,
+                    status: r.querySelector('.m-status').value,
+                    ctrl: r.querySelector('.m-ctrl').value
+                });
+            });
+
+            if(steps.length === 0) {
+                showToast("Tambahkan minimal 1 langkah manuver!");
+                return;
+            }
+
+            const payload = {
+                id: Date.now(),
+                date, bay, desc, pm, work, k3, operator, dispa, steps
+            };
+
+            manuverRecords.unshift(payload);
+            localStorage.setItem('gandul_manuver', JSON.stringify(manuverRecords));
+
+            showToast("Catatan manuver berhasil disimpan!");
+            document.getElementById('manuverForm').reset();
+            document.getElementById('man-date').valueAsDate = new Date();
+            document.getElementById('manuver-steps-tbody').innerHTML = '';
+            addManuverRow();
+            renderDashboard();
+            renderManuverHistory();
+            switchTab('riwayat-manuver');
+        }
+
+        function renderManuverHistory() {
+            const list = document.getElementById('manuver-history-list');
+            if(!list) return;
+            const query = (document.getElementById('search-manuver')?.value || '').toLowerCase();
+            const filtered = manuverRecords.filter(m => m.desc.toLowerCase().includes(query) || m.bay.toLowerCase().includes(query) || m.date.includes(query));
+
+            if(filtered.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada riwayat manuver tersimpan.</p>`;
+                return;
+            }
+
+            list.innerHTML = '';
+            filtered.forEach(m => {
+                let stepsHtml = '';
+                m.steps.forEach(s => {
+                    stepsHtml += `<div class="font-mono text-xs py-0.5">• ${s.time} ${s.equip} <strong>${s.status}</strong> <strong>${s.ctrl}</strong></div>`;
+                });
+
+                list.innerHTML += `
+                    <div class="border rounded-2xl bg-slate-50 shadow-sm overflow-hidden transition">
+                        <div onclick="toggleManuverDetail(${m.id})" class="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 flex-wrap gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="bg-plnBlue text-white text-xs font-bold px-3 py-1 rounded-full">${m.date}</span>
+                                <div>
+                                    <span class="font-bold text-xs bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded mr-2">${m.bay}</span>
+                                    <span class="font-bold text-sm text-slate-800">${m.desc}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="event.stopPropagation(); printManuverPDF(${m.id})" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow"><i class="fa-solid fa-file-pdf"></i> Cetak Lembar</button>
+                                <button onclick="event.stopPropagation(); copyWhatsAppText(${m.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow"><i class="fa-brands fa-whatsapp"></i> Salin WA</button>
+                                <button onclick="event.stopPropagation(); deleteManuver(${m.id})" class="text-red-500 hover:text-red-700 p-1.5"><i class="fa-solid fa-trash"></i></button>
+                                <i class="fa-solid fa-chevron-down text-slate-400 text-xs ml-2" id="chevron-${m.id}"></i>
+                            </div>
+                        </div>
+                        <div id="detail-${m.id}" class="hidden border-t bg-white p-4 space-y-3">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs bg-slate-50 p-3 rounded-xl border">
+                                <div><strong>PM:</strong> ${m.pm}</div>
+                                <div><strong>Pengawas Pekerjaan:</strong> ${m.work}</div>
+                                <div><strong>Pengawas K3:</strong> ${m.k3}</div>
+                                <div><strong>Pelaksana:</strong> ${m.operator}</div>
+                                <div><strong>Dispatcher:</strong> ${m.dispa}</div>
+                            </div>
+                            <div class="border p-3 rounded-xl bg-slate-50 space-y-1">
+                                <p class="text-[11px] font-bold text-slate-400 uppercase mb-1">Rincian Langkah Manuver:</p>
+                                ${stepsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleManuverDetail(id) {
+            const el = document.getElementById(`detail-${id}`);
+            if(el) el.classList.toggle('hidden');
+        }
+
+        function copyWhatsAppText(id) {
+            const m = manuverRecords.find(item => item.id === id);
+            if(!m) return;
+
+            let text = `INFO MANUVER GITET GANDUL\n\n`;
+            text += `${formatDateIndo(m.date)}\n`;
+            text += `${m.desc}\n\n`;
+            text += `PM : ${m.pm}\n`;
+            text += `Pel. Manuver : ${m.operator}\n`;
+            text += `Dispa : ${m.dispa}\n\n`;
+
+            m.steps.forEach(s => {
+                text += `${s.time} ${s.equip} ${s.status} ${s.ctrl}\n`;
+            });
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text.trim();
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast("Format teks WhatsApp berhasil disalin!");
+            } catch (err) {
+                showToast("Gagal menyalin teks.");
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function formatDateIndo(dateStr) {
+            if(!dateStr) return '';
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('id-ID', options);
+        }
+
+        function printManuverPDF(id) {
+            const m = manuverRecords.find(item => item.id === id);
+            if(!m) return;
+
+            let stepsHtml = '';
+            m.steps.forEach(s => {
+                stepsHtml += `<tr><td style="border:1px solid #cbd5e1; padding:6px; font-family:monospace; text-align:center;">${s.time}</td><td style="border:1px solid #cbd5e1; padding:6px;">${s.equip}</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold; text-align:center;">${s.status}</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold; text-align:center;">${s.ctrl}</td></tr>`;
+            });
+
+            const win = window.open('', '_blank');
+            win.document.write(`
+                <html>
+                <head><title>Lembar Manuver - ${m.date}</title>
+                <style>body{font-family:sans-serif; padding:20px; color:#0f172a;} h2{text-align:center; margin-bottom:0;} p{font-size:12px;} table{width:100%; border-collapse:collapse; margin-top:15px; font-size:12px;} th{background:#1e3a8a; color:white; padding:8px; border:1px solid #1e3a8a;}</style>
+                </head>
+                <body>
+                    <h2>PT PLN (PERSERO)</h2>
+                    <h3 style="text-align:center; margin-top:5px;">INFO MANUVER GITET 500 kV GANDUL</h3>
+                    <p><strong>Hari/Tanggal:</strong> ${formatDateIndo(m.date)} | <strong>Bay:</strong> ${m.bay}<br><strong>Kegiatan:</strong> ${m.desc}</p>
+                    <p><strong>PM:</strong> ${m.pm} | <strong>Pengawas Pekerjaan:</strong> ${m.work} | <strong>Pengawas K3:</strong> ${m.k3}<br><strong>Pelaksana Manuver:</strong> ${m.operator} | <strong>Dispatcher:</strong> ${m.dispa}</p>
+                    <table>
+                        <thead><tr><th>Jam</th><th>Nama Peralatan (PMS/PMT)</th><th>Status</th><th>Kontrol</th></tr></thead>
+                        <tbody>${stepsHtml}</tbody>
+                    </table>
+                    <div style="margin-top:40px; display:flex; justify-content:space-between; text-align:center; font-size:12px;">
+                        <div><br><br><br><b>Pelaksana Manuver</b></div>
+                        <div><br><br><br><b>Pengawas Manuver (PM)</b></div>
+                        <div><br><br><br><b>Dispatcher</b></div>
+                    </div>
+                </body>
+                </html>
+            `);
+            win.document.close();
+            win.print();
+        }
+
+        function deleteManuver(id) {
+            if(confirm("Hapus catatan manuver ini?")) {
+                manuverRecords = manuverRecords.filter(m => m.id !== id);
+                localStorage.setItem('gandul_manuver', JSON.stringify(manuverRecords));
+                renderDashboard();
+                renderManuverHistory();
+                showToast("Catatan manuver dihapus.");
+            }
+        }
+
+        function renderDashboard() {
+            const totalRecs = document.getElementById('stat-total-records');
+            if(totalRecs) totalRecs.innerText = records.length;
+            
+            const manuverRecs = document.getElementById('stat-manuver-records');
+            if(manuverRecs) manuverRecs.innerText = manuverRecords.length;
+
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const monthRecs = document.getElementById('stat-month-records');
+            if(monthRecs) monthRecs.innerText = records.filter(r => r.date.startsWith(currentMonth)).length;
+
+            const recentList = document.getElementById('dashboard-recent-list');
+            if(!recentList) return;
+
+            if(records.length === 0) {
+                recentList.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada catatan beban.</p>`;
+                return;
+            }
+
+            recentList.innerHTML = '';
+            records.slice(-3).forEach(r => {
+                recentList.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 border rounded-xl text-xs">
+                        <div>
+                            <span class="font-bold text-plnBlue">${r.date} (Jam ${r.hour})</span>
+                            <span class="text-slate-500 ml-2">Jargi: ${r.jargi1} & ${r.jargi2}</span>
+                        </div>
+                        <button onclick="switchTab('jam${r.hour.replace('.','')}')" class="text-plnSky font-bold hover:underline">Lihat Detail →</button>
+                    </div>
+                `;
+            });
+        }
+
+        function renderTrendChart() {
+            const bayName = document.getElementById('trend-bay-select').value;
+            const sorted = [...records].sort((a,b) => new Date(a.date) - new Date(b.date));
+            let labels = [];
+            let dataAmp = [];
+            let dataMw = [];
+
+            sorted.forEach(r => {
+                if(r.bays[bayName]) {
+                    labels.push(`${r.date} (${r.hour})`);
+                    dataAmp.push(r.bays[bayName].ampere);
+                    dataMw.push(r.bays[bayName].mw);
+                }
+            });
+
+            const canvas = document.getElementById('trendChart');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if(trendChartInstance) trendChartInstance.destroy();
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.length ? labels : ['Belum ada data'],
+                    datasets: [
+                        { label: `${bayName} - Ampere (A)`, data: dataAmp, borderColor: '#1e3a8a', backgroundColor: '#1e3a8a', tension: 0.2 },
+                        { label: `${bayName} - MW`, data: dataMw, borderColor: '#0284c7', backgroundColor: '#0284c7', tension: 0.2 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('setting-gscript-url').value;
+            localStorage.setItem('gandul_gscript_url', url);
+            showToast("Pengaturan sinkronisasi disimpan!");
+        }
+    </script>
+</body>
+</html>
